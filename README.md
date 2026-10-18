@@ -21,9 +21,11 @@ Demo target for Blue-Oryx dependency pull requests in npm (fix class A1).
 
 1. Blue-Oryx receives a confirmed finding for CVE-2018-1002204 on the asset
    bound to this repository.
-2. It opens a pull request from a `blue-oryx/<id>` branch that changes the
-   locked `adm-zip` in `package-lock.json` to the lowest fixed version
-   (`0.4.11`), inside the range of `package.json`.
+2. It opens a pull request from a `blue-oryx/<id>` branch that changes one
+   file, `package-lock.json`. The fixed version from the advisory is `0.4.11`,
+   inside the range `^0.4.7` of `package.json`, so the lockfile is built
+   again with npm (no install scripts) and locks the version npm chooses in
+   that range (`0.4.16` today); the build check asks for at least `0.4.11`.
 3. The `build` workflow runs on the pull request.
 4. A person reviews and merges the pull request. Blue-Oryx never merges.
 5. The workflow pushes the image of the merge commit. The operator deploys it
