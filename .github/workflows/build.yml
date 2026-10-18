@@ -1,0 +1,56 @@
+name: build
+
+# A pull request builds the image and stops there. A push to main (a merge)
+# builds it again and pushes it to the registry of this repo, under the id
+# of the commit. Nothing is deployed from here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build -t demo-06-app:ci .
+      - name: Show installed adm-zip version
+        run: docker run --rm --entrypoint node demo-06-app:ci -p "require('/app/node_modules/adm-zip/package.json').version"
+
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The only job that may write a package, and it never runs for a pull
+    # request.
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: |
+          docker build \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            -t "$IMAGE" .
+      - name: Show installed adm-zip version
+        run: docker run --rm --entrypoint node "$IMAGE" -p "require('/app/node_modules/adm-zip/package.json').version"
+      - name: Push image
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"
